@@ -1,0 +1,36 @@
+name: Build Arch PKGBUILD
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Prepare system and build PKGBUILD
+        run: |
+          set -e
+          # Refresh keyring and init pacman keys
+          pacman -Sy --noconfirm archlinux-keyring
+          pacman-key --init
+          pacman-key --populate archlinux
+          # Install build deps
+          pacman -Syu --noconfirm --needed base-devel fakeroot git devtools
+          # Create a non-root user for makepkg
+          useradd -m builder
+          chown -R builder:builder /github/workspace
+          # Build the package (as non-root)
+          su builder -c "cd /github/workspace && MAKEFLAGS=\"--jobs=$(nproc)\" makepkg -s --noconfirm --noprogressbar"
+        shell: bash
+      - name: List workspace files
+        run: ls -la /github/workspace
+        shell: bash
+      - name: Upload whole workspace
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: workspace
+          path: /github/workspace
