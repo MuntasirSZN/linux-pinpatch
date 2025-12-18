@@ -35,6 +35,10 @@ jobs:
           pacman-key --populate archlinux
           # Install base build deps (as root)
           pacman -Syu --noconfirm --needed base-devel fakeroot git devtools
+          # Get keys
+          gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 38DBBDC86092693E B8AC08600F108CDF
+          pacman-key --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys 38DBBDC86092693E B8AC08600F108CDF
+          pacman-key --lsign-key 38DBBDC86092693E B8AC08600F108CDF
 
           # If PKGBUILD exists, try to extract makedepends and install them as root
           if [ -f "$REPO/PKGBUILD" ]; then
