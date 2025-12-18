@@ -14,15 +14,48 @@ jobs:
       - name: Prepare system and build PKGBUILD
         run: |
           set -e
+          # Determine repo path early so we can install makedepends as root
+          REPO="${GITHUB_WORKSPACE:-}"
+          if [ -z "$REPO" ]; then
+            if [ -d /github/workspace ]; then
+              REPO=/github/workspace
+            elif [ -d /github/home ]; then
+              REPO=/github/home
+            elif [ -d /__w ]; then
+              REPO=/__w
+            else
+              REPO="$PWD"
+            fi
+          fi
+          echo "Detected repo: $REPO"
+
           # Refresh keyring and init pacman keys
           pacman -Sy --noconfirm archlinux-keyring
           pacman-key --init
           pacman-key --populate archlinux
-          # Install build deps
+          # Install base build deps (as root)
           pacman -Syu --noconfirm --needed base-devel fakeroot git devtools
+
+          # If PKGBUILD exists, try to extract makedepends and install them as root
+          if [ -f "$REPO/PKGBUILD" ]; then
+            echo "Installing makedepends from PKGBUILD..."
+            deps=$(awk '/^makedepends=\(/ {p=1; next} p && /^\)/ {p=0; exit} p {gsub(/^[ \t]+|[ \t]+$/,"",$0); if($0!~/^#/){print}}' "$REPO/PKGBUILD" | tr '\n' ' ')
+            # remove comments and empty entries
+            deps=$(echo "$deps" | sed 's/#.*//g' | xargs)
+            if [ -n "$deps" ]; then
+              echo "Installing: $deps"
+              pacman -S --noconfirm --needed $deps || true
+            else
+              echo "No makedepends found or failed to parse; skipping."
+            fi
+          else
+            echo "No PKGBUILD at $REPO/PKGBUILD; skipping makedepends install"
+          fi
+
           # Create a non-root user for makepkg
           useradd -m builder
-          # Determine workspace path: prefer GITHUB_WORKSPACE, then known mounts, then current PWD
+
+          # Determine workspace path used inside the container and chown
           WORKDIR="${GITHUB_WORKSPACE:-}"
           if [ -n "$WORKDIR" ] && [ -d "$WORKDIR" ]; then
             chown -R builder:builder "$WORKDIR"
@@ -44,6 +77,7 @@ jobs:
             ls -la /__w || true
             exit 1
           fi
+
           # Build the package (as non-root)
           su builder -c "cd \"$WORKDIR\" && MAKEFLAGS=\"--jobs=$(nproc)\" makepkg -s --noconfirm --noprogressbar"
         shell: bash
