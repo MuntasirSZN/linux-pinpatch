@@ -44,13 +44,31 @@ jobs:
             deps=$(echo "$deps" | sed 's/#.*//g' | xargs)
             if [ -n "$deps" ]; then
               echo "Installing: $deps"
-              pacman -S --noconfirm --needed $deps || true
+              pacman -S --noconfirm --needed $deps
             else
               echo "No makedepends found or failed to parse; skipping."
             fi
           else
             echo "No PKGBUILD at $REPO/PKGBUILD; skipping makedepends install"
           fi
+
+          # Try to mount an in-memory build dir to reduce disk IO and free space
+          TMP_BUILD=/tmp/build
+          TMPFS_SIZE=6G
+          if mount -t tmpfs -o size=$TMPFS_SIZE tmpfs $TMP_BUILD 2>/dev/null; then
+            echo "Mounted tmpfs at $TMP_BUILD size $TMPFS_SIZE"
+          else
+            echo "Could not mount tmpfs, using /tmp"
+            TMP_BUILD=/tmp
+          fi
+          mkdir -p "$TMP_BUILD/ccache"
+
+          # Install ccache to speed rebuilds and keep cache in tmpfs
+          pacman -S --noconfirm --needed ccache
+
+          # Free up pacman cache to save space (after installing makedepends)
+          pacman -Scc --noconfirm
+          rm -rf /var/cache/pacman/pkg/*
 
           # Create a non-root user for makepkg
           useradd -m builder
@@ -73,16 +91,30 @@ jobs:
             WORKDIR=/__w
           else
             echo "Workspace not found; listing /github and /__w:"
-            ls -la /github || true
-            ls -la /__w || true
+            ls -la /github
+            ls -la /__w
             exit 1
           fi
+
+          # chown tmp dirs to builder
+          chown -R builder:builder "$TMP_BUILD"
+          chown -R builder:builder "$TMP_BUILD/ccache"
 
           # Get keys
           su builder -c "gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 38DBBDC86092693E B8AC08600F108CDF"
 
-          # Build the package (as non-root)
-          su builder -c "cd \"$WORKDIR\" && MAKEFLAGS=\"--jobs=$(nproc)\" makepkg -s --noconfirm --noprogressbar"
+          # Decide build parallelism (balance speed vs disk)
+          NPROC=$(nproc || echo 1)
+          if [ "$NPROC" -ge 8 ]; then
+            JOBS=4
+          elif [ "$NPROC" -ge 4 ]; then
+            JOBS=3
+          else
+            JOBS=$NPROC
+          fi
+
+          # Build the package (as non-root). Use ccache and tmpfs, tune compression.
+          su builder -c "export CCACHE_DIR=\"$TMP_BUILD/ccache\" TMPDIR=\"$TMP_BUILD\" PKGEXT='.pkg.tar.xz' && ccache -M 2G; export COMPRESSXZ='xz -c -T0 -9e'; cd \"$WORKDIR\" && MAKEFLAGS=\"--jobs=$JOBS --load-average=$JOBS\" makepkg -s --noconfirm --noprogressbar"
         shell: bash
       - name: List workspace files
         run: |
@@ -90,7 +122,7 @@ jobs:
           for t in "${TARGETS[@]}"; do
             if [ -n "$t" ] && [ -d "$t" ]; then
               echo "Listing: $t"
-              ls -la "$t" || true
+              ls -la "$t"
               break
             fi
           done
