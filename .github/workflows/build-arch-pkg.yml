@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
+      options: --tmpfs /tmp/build:rw,size=12G
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -54,21 +55,27 @@ jobs:
 
           # Try to mount an in-memory build dir to reduce disk IO and free space
           TMP_BUILD=/tmp/build
-          TMPFS_SIZE=6G
-          if mount -t tmpfs -o size=$TMPFS_SIZE tmpfs $TMP_BUILD 2>/dev/null; then
+          TMPFS_SIZE=10G
+          if mount -t tmpfs -o size=$TMPFS_SIZE,tmpmode=1777 tmpfs $TMP_BUILD 2>/dev/null; then
             echo "Mounted tmpfs at $TMP_BUILD size $TMPFS_SIZE"
           else
             echo "Could not mount tmpfs, using /tmp"
             TMP_BUILD=/tmp
           fi
-          mkdir -p "$TMP_BUILD/ccache"
+          mkdir -p "$TMP_BUILD/ccache" "$TMP_BUILD/out"
 
           # Install ccache to speed rebuilds and keep cache in tmpfs
           pacman -S --noconfirm --needed ccache
 
-          # Free up pacman cache to save space (after installing makedepends)
+          # Free up pacman cache and sync DBs to save space (AGGRESSIVE)
           pacman -Scc --noconfirm
           rm -rf /var/cache/pacman/pkg/*
+          rm -rf /var/lib/pacman/sync/*
+          # remove local package metadata (frees space, pacman becomes unusable afterwards)
+          rm -rf /var/lib/pacman/local/*
+
+          # Remove documentation and locales to reclaim space (AGGRESSIVE)
+          rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/locale/* /usr/share/info/* /usr/share/groff/* /usr/share/gtk-doc/*
 
           # Create a non-root user for makepkg
           useradd -m builder
@@ -96,16 +103,19 @@ jobs:
             exit 1
           fi
 
-          # chown tmp dirs to builder
+          # Prepare tmpfs dirs for builder and ccache
           chown -R builder:builder "$TMP_BUILD"
           chown -R builder:builder "$TMP_BUILD/ccache"
+          chown -R builder:builder "$TMP_BUILD/out"
 
           # Get keys
           su builder -c "gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 38DBBDC86092693E B8AC08600F108CDF"
 
           # Decide build parallelism (balance speed vs disk)
           NPROC=$(nproc || echo 1)
-          if [ "$NPROC" -ge 8 ]; then
+          if [ "$NPROC" -ge 12 ]; then
+            JOBS=6
+          elif [ "$NPROC" -ge 8 ]; then
             JOBS=4
           elif [ "$NPROC" -ge 4 ]; then
             JOBS=3
@@ -113,8 +123,8 @@ jobs:
             JOBS=$NPROC
           fi
 
-          # Build the package (as non-root). Use ccache and tmpfs, tune compression.
-          su builder -c "export CCACHE_DIR=\"$TMP_BUILD/ccache\" TMPDIR=\"$TMP_BUILD\" PKGEXT='.pkg.tar.xz' && ccache -M 2G; export COMPRESSXZ='xz -c -T0 -9e'; cd \"$WORKDIR\" && MAKEFLAGS=\"--jobs=$JOBS --load-average=$JOBS\" makepkg -s --noconfirm --noprogressbar"
+          # Build the package (as non-root). Use ccache and tmpfs via KBUILD_OUTPUT, tune compression.
+          su builder -c "export CCACHE_DIR=\"$TMP_BUILD/ccache\" TMPDIR=\"$TMP_BUILD\" KBUILD_OUTPUT=\"$TMP_BUILD/out\" PKGEXT='.pkg.tar.xz' && ccache -M 4G; export COMPRESSXZ='xz -c -T0 -9e'; cd \"$WORKDIR\" && MAKEFLAGS=\"--jobs=$JOBS --load-average=$JOBS -s\" makepkg -s --noconfirm --noprogressbar"
         shell: bash
       - name: List workspace files
         run: |
