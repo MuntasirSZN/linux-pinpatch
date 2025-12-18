@@ -80,8 +80,6 @@ jobs:
 
           # Get keys
           su builder -c "gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 38DBBDC86092693E B8AC08600F108CDF"
-          su builder -c "pacman-key --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys 38DBBDC86092693E B8AC08600F108CDF"
-          su builder -c "pacman-key --lsign-key 38DBBDC86092693E B8AC08600F108CDF"
 
           # Build the package (as non-root)
           su builder -c "cd \"$WORKDIR\" && MAKEFLAGS=\"--jobs=$(nproc)\" makepkg -s --noconfirm --noprogressbar"
