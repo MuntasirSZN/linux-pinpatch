@@ -70,10 +70,7 @@ jobs:
           # Free up pacman cache and sync DBs to save space (AGGRESSIVE)
           pacman -Scc --noconfirm
           rm -rf /var/cache/pacman/pkg/*
-          rm -rf /var/lib/pacman/sync/*
-          # remove local package metadata (frees space, pacman becomes unusable afterwards)
-          rm -rf /var/lib/pacman/local/*
-          pacman-db-upgrade
+  
           # Remove documentation and locales to reclaim space (AGGRESSIVE)
           rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/locale/* /usr/share/info/* /usr/share/groff/* /usr/share/gtk-doc/*
 
