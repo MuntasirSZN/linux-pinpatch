@@ -37,7 +37,7 @@ _srctag=v${pkgver%.*}-${pkgver##*.}
 source=(
   https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.{xz,sign}
   $url/releases/download/$_srctag/linux-$_srctag.patch.zst{,.sig}
-  alc897-mic.patch
+  v2-alc897-mic.patch
   config  # the main kernel config file
 )
 validpgpkeys=(
@@ -50,13 +50,13 @@ sha256sums=('d0a78bf3f0d12aaa10af3b5adcaed5bc767b5b78705e5ef885d5e930b72e25d5'
             'SKIP'
             'e0de7a4ccf2636993b2f49081399efaa63c0bf1c0db5cf1cbbdd6f8bfbede241'
             'SKIP'
-            'c26520aef0334eeecb7a01b1036b2268984743f0174b495f0d2449be60e02f4b'
+            'd5f5bd0f7144abc2c075ff8e01df12ff852b98a886d1a2320889468818936a87'
             '3061f542f99dd8dec161029e31dce15281cd99ec68e8403312d135ed13787dfd')
 b2sums=('6ea6a7235ee59f876b015c6fda0f2772980c6ea58240689ce581182262387cbef3aed3c95ced66cdb56479cbd83961fbcbdfdff09f049941c3daf047710adb61'
         'SKIP'
         '48a0b27d9c7ede9141fa581c2415f48d73e155d5afb515f9f10e0cd95947027464b3e2335bb5c275527007d9170889961858909520f2e6049ef2701cf4df9095'
         'SKIP'
-        '6dbad8a7eba37f8564eb8fd587801578436228648c1ec6539ce725f557749769e7c9fe45ea89f805de67fcb77ba3fea98af5d61805c88aa052722b8f588ea0bb'
+        '9128bc4f5160f387cdf66483228adf14012d6f05ec8ca06d2a769a2d38792ccf2b3ee365f9c9d455d9e484c99e7f8051797140e2f326ee99857b58a943afaaaf'
         'dc5ebe64a439595311311f25f8d765e1b6abfc4a0ce3e8c13b521d900fb231b287c0e7b18fc2f6534300322aac9a360d79fdfcfd81ae4824547477ea0e49a1fe')
 
 export KBUILD_BUILD_HOST=archlinux

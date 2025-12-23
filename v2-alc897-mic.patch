@@ -1,8 +1,8 @@
-diff --git a/sound/hda/codecs/realtek/alc662.c b/sound/hda/codecs/realtek/alc662.c
-index 1234567..abcdefg 100644
---- a/sound/hda/codecs/realtek/alc662.c
-+++ b/sound/hda/codecs/realtek/alc662.c
-@@ -313,6 +313,7 @@ enum {
+diff --git a/sound/pci/hda/patch_realtek.c b/sound/pci/hda/patch_realtek.c
+index 8458ca4d8d9d..64724066ae7d 100644
+--- a/sound/pci/hda/patch_realtek.c
++++ b/sound/pci/hda/patch_realtek.c
+@@ -12900,6 +12900,7 @@ enum {
  	ALC897_FIXUP_HEADSET_MIC_PIN2,
  	ALC897_FIXUP_UNIS_H3C_X500S,
  	ALC897_FIXUP_HEADSET_MIC_PIN3,
@@ -10,21 +10,21 @@ index 1234567..abcdefg 100644
  };
  
  static const struct hda_fixup alc662_fixups[] = {
-@@ -766,6 +767,13 @@ static const struct hda_fixup alc662_fixups[] = {
+@@ -13353,6 +13354,13 @@ static const struct hda_fixup alc662_fixups[] = {
  			{ }
  		},
  	},
 +	[ALC897_FIXUP_HEADSET_MIC_PIN4] = {
 +		.type = HDA_FIXUP_PINS,
 +		.v.pins = (const struct hda_pintbl[]) {
-+			{ 0x19, 0x02a1403f }, /* use as headset mic */
++			{ 0x19, 0x0321403f }, 
 +			{ }
 +		},
 +	},
  };
  
  static const struct hda_quirk alc662_fixup_tbl[] = {
-@@ -815,6 +823,7 @@ static const struct hda_quirk alc662_fixup_tbl[] = {
+@@ -13402,6 +13410,7 @@ static const struct hda_quirk alc662_fixup_tbl[] = {
  	SND_PCI_QUIRK(0x1043, 0x8469, "ASUS mobo", ALC662_FIXUP_NO_JACK_DETECT),
  	SND_PCI_QUIRK(0x105b, 0x0cd6, "Foxconn", ALC662_FIXUP_ASUS_MODE2),
  	SND_PCI_QUIRK(0x144d, 0xc051, "Samsung R720", ALC662_FIXUP_IDEAPAD),
