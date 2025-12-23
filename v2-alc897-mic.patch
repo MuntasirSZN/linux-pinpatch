@@ -1,4 +1,4 @@
-diff --git a/sound/pci/hda/patch_realtek.c b/sound/pci/hda/patch_realtek.c
+diff --git a/sound/hda/codecs/realtek/alc667.c b/sound/hda/codecs/realtek/alc667.c
 index 8458ca4d8d9d..64724066ae7d 100644
 --- a/sound/pci/hda/patch_realtek.c
 +++ b/sound/pci/hda/patch_realtek.c
